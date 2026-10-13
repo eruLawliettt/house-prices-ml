@@ -12,3 +12,4 @@ xgboost
 torch
 
 omegaconf
+ipykernel
