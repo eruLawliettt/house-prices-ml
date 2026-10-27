@@ -1,0 +1,95 @@
+general:
+  experiment_name: house_prices_final
+  seed: 42
+  use_ensemble_for_submission: false
+
+target:
+  column: SalePrice
+  log_transform: true
+
+paths:
+  train_path: 'data/train.csv'
+  test_path: 'data/test.csv'
+  submission_path: 'submission.csv'
+  results_path: 'results.csv'
+  ensemble_results_path: ensemble_results.csv
+
+cv:
+  n_splits: 5
+  scoring: neg_root_mean_squared_error
+
+preprocessing:
+  use_total_sf: true
+  use_total_bathrooms: true
+  use_house_age: true
+
+models:
+  elastic_net:
+    enabled: true
+    model_type: standard
+    params: 
+      alpha: 0.000314
+      l1_ratio: 0.950714
+      max_iter: 20000
+
+  random_forest:
+    enabled: true
+    model_type: boosting
+    params: 
+      n_estimators: 700
+      max_depth: 11
+      min_samples_split: 6
+      min_samples_leaf: 3
+      max_features: 0.5
+
+  lightgbm:
+    enabled: true
+    model_type: boosting
+    params:
+      n_estimators: 800
+      learning_rate: 0.012388
+      num_leaves: 31
+      max_depth: 10
+      min_child_samples: 16
+      subsample: 0.75536
+      colsample_bytree: 0.8279217
+
+  xgboost:
+    enabled: true
+    model_type: boosting
+    params:
+      n_estimators: 800
+      learning_rate: 0.0454
+      max_depth: 3
+      min_child_weight: 2.938288
+      subsample: 0.861556
+      colsample_bytree: 0.70648
+      reg_alpha: 0.225479
+      reg_lambda: 0.041012
+
+  catboost:
+    enabled: false
+    model_type: catboost
+    params:
+      iterations: 1500
+      depth: 4
+      learning_rate: 0.027432
+      l2_leaf_reg: 1.7309
+      random_strength: 3.73029
+    training:
+      early_stopping_rounds: 100
+    
+
+  dnn:
+    enabled: true
+    model_type: standard
+    params: 
+      hidden_dim: 32
+
+    training:
+      epochs: 150
+      batch_size: 32
+      lr: 0.00018
+      weight_decay: 0.000946
+
+ensemble: {}

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
 
 def evaluate_model(estimator, X, y, n_splits=5, 
-                   seed=42, n_jobs=1):
+                   seed=42, n_jobs=1, scoring='neg_root_mean_squared_error'):
     """Evaluate an estimator using cross-validation."""
     
     cv = KFold(
@@ -23,7 +23,7 @@ def evaluate_model(estimator, X, y, n_splits=5,
         X=X,
         y=y,
         cv=cv,
-        scoring='neg_root_mean_squared_error',
+        scoring=scoring,
         n_jobs=n_jobs,
     )
     
@@ -31,8 +31,8 @@ def evaluate_model(estimator, X, y, n_splits=5,
     
     return {
         'fold_rmse': rmse,
-        'mean': rmse.mean(),
-        'std': rmse.std(),
+        'mean_rmse': rmse.mean(),
+        'std_rmse': rmse.std(),
     }
     
 def evaluate_catboost(X, y, model_params=None, n_splits=5, seed=42, early_stopping_rounds=None,
