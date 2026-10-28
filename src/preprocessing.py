@@ -169,7 +169,7 @@ def build_preprocessor(X, model_type='standard', use_total_sf=False,
         )
     
     if model_type == 'catboost':
-        regular_cat_transformer = 'passthrough'
+        regular_cat_transformer = SimpleImputer(strategy='most_frequent')
         true_cat_transformer = SimpleImputer(strategy='most_frequent')
         structural_cat_transformer =  SimpleImputer(strategy='constant', fill_value='None')
         

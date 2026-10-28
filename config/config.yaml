@@ -68,7 +68,7 @@ models:
       reg_lambda: 0.041012
 
   catboost:
-    enabled: false
+    enabled: true
     model_type: catboost
     params:
       iterations: 1500

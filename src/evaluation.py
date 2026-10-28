@@ -111,7 +111,7 @@ def evaluate_catboost(X, y, model_params=None, n_splits=5, seed=42, early_stoppi
         "mean_best_iteration": best_iterations,
     }
 
-def evaluate_dnn(X, y, model_class, model_params=None,
+def evaluate_dnn(X, y, model_params=None,
                  n_splits=5, seed=42, epochs=100, batch_size=32, lr=1e-3, weight_decay=0.0,
                  use_total_sf=False, use_total_bathrooms=False, use_house_age=False,):
     
@@ -159,7 +159,7 @@ def evaluate_dnn(X, y, model_class, model_params=None,
         
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         
-        model = model_class(
+        model = HousePricesMLP(
             input_dim=X_train_processed.shape[1],
             **model_params,
         )
@@ -203,3 +203,63 @@ def evaluate_dnn(X, y, model_class, model_params=None,
         "mean_rmse": fold_rmse.mean(),
         "std_rmse": fold_rmse.std(),
     }
+    
+def train_test_final_dnn(X_train, y_train, X_test, hidden_dim=32, 
+                         epochs=100, batch_size=32, lr=3e-3, 
+                         weight_decay=0, log_transform=False, seed=42):
+    torch.manual_seed(seed)
+    
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(np.asarray(y_train), dtype=torch.float32)
+    
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+    
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    
+    model = HousePricesMLP(
+        input_dim=X_train.shape[1],
+        hidden_dim=hidden_dim
+    )
+    
+    optimizer = torch.optim.Adam(
+        model.parameters(), 
+        lr=lr,
+        weight_decay=weight_decay)
+    
+    loss_fn = nn.MSELoss()
+    
+    for epoch in range(epochs):
+        model.train()
+        for x_batch, y_batch in train_dataloader:
+            optimizer.zero_grad()
+            
+            preds = model(x_batch)
+            loss = loss_fn(preds, y_batch)
+            
+            loss.backward()
+            optimizer.step()
+            
+    model.eval()
+    
+    with torch.no_grad():
+        preds = model(X_test_tensor).cpu().numpy()
+        
+    return np.expm1(preds) if log_transform else preds
+    
+class HousePricesMLP(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super().__init__()
+
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x).squeeze(1)
