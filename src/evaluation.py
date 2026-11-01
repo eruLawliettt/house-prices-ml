@@ -115,7 +115,7 @@ def evaluate_dnn(X, y, model_params=None,
                  n_splits=5, seed=42, epochs=100, batch_size=32, lr=1e-3, weight_decay=0.0,
                  use_total_sf=False, use_total_bathrooms=False, use_house_age=False,):
     
-    torch.manual_seed=seed
+    torch.manual_seed(seed)
     np.random.seed(seed)
         
     if torch.cuda.is_available():

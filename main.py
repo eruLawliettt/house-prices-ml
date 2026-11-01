@@ -12,6 +12,7 @@ from src.preprocessing import build_preprocessor
 from src.models import get_model
 from src.evaluation import evaluate_model, evaluate_catboost, evaluate_dnn, train_test_final_dnn
 
+from src.ensembles import get_oof_lgbm, get_oof_catboost, get_oof_dnn
 
 def main():
     
@@ -75,16 +76,27 @@ def main():
     
     test = pd.read_csv(config.paths.test_path)
     
-    best_model_cfg = config.models[best_model_name]
-    
-    train_best_and_submit(
-        X=X,
-        y=y,
-        test=test,
-        best_model_name=best_model_name,
-        best_model_cfg=best_model_cfg,
-        config=config
-    )
+    if config.general.use_ensemble_for_submission:
+        print("\nTraining ensemble and generating submission...")
+        train_ensemble_and_submit(
+            X=X,
+            y=y,
+            test=test,
+            config=config
+        )
+        
+    else:
+        print(f"\nTraining best model ({best_model_name}) and generating submission...")
+        best_model_cfg = config.models[best_model_name]
+        
+        train_best_and_submit(
+            X=X,
+            y=y,
+            test=test,
+            best_model_name=best_model_name,
+            best_model_cfg=best_model_cfg,
+            config=config
+        )
 
         
 def evaluate_configured_model(model_name, model_cfg, X, y, config):
@@ -154,6 +166,96 @@ def evaluate_configured_model(model_name, model_cfg, X, y, config):
         seed=config.general.seed,
     )
       
+def train_ensemble_and_submit(X, y, test, config):
+    seed = config.general.seed
+    n_splits = config.cv.n_splits
+    
+    catboost_params = OmegaConf.to_container(
+        config.models.catboost.params,
+        resolve=True,
+    )
+    
+    lgbm_params = OmegaConf.to_container(
+        config.models.lightgbm.params,
+        resolve=True,
+    )
+    
+    dnn_params = OmegaConf.to_container(
+        config.models.dnn.params,
+        resolve=True,
+    )
+    
+    cat_oof, cat_test = get_oof_catboost(
+        X=X,
+        y=y,
+        test=test,
+        model_params=catboost_params,
+        n_splits=n_splits,
+        seed=seed,
+        
+        use_house_age=config.preprocessing.use_house_age,
+        use_total_bathrooms=config.preprocessing.use_total_bathrooms,
+        use_total_sf=config.preprocessing.use_total_sf,
+    )
+    
+    lgbm_oof, lgbm_test = get_oof_lgbm(
+        X=X,
+        y=y,
+        test=test,
+        model_params=lgbm_params,
+        n_splits=n_splits,
+        seed=seed,
+        
+        use_house_age=config.preprocessing.use_house_age,
+        use_total_bathrooms=config.preprocessing.use_total_bathrooms,
+        use_total_sf=config.preprocessing.use_total_sf,
+    )
+    
+    dnn_oof, dnn_test = get_oof_dnn(
+        X=X,
+        y=y,
+        test=test,
+        hidden_dim=dnn_params['hidden_dim'],
+        epochs=config.models.dnn.training.epochs,
+        batch_size=config.models.dnn.training.batch_size,
+        lr=config.models.dnn.training.lr,
+        weight_decay=config.models.dnn.training.weight_decay,
+        n_splits=n_splits,
+        seed=seed,
+        
+        use_house_age=config.preprocessing.use_house_age,
+        use_total_bathrooms=config.preprocessing.use_total_bathrooms,
+        use_total_sf=config.preprocessing.use_total_sf,
+    )
+    
+    ensemble_oof = (
+        0.6 * cat_oof +
+        0.3 * lgbm_oof +
+        0.1 * dnn_oof
+    )
+    
+    ensemble_test = (
+        0.6 * cat_test +
+        0.3 * lgbm_test +
+        0.1 * dnn_test
+    )
+    
+    ensemble_rmse = np.sqrt(np.mean((y.to_numpy() - ensemble_oof) ** 2))
+    
+    print(
+        f"\nEnsemble OOF RMSE: "
+        f"{ensemble_rmse:.6f}"
+    )
+    
+    if config.target.log_transform:
+        ensemble_test = np.expm1(ensemble_test)
+        
+    save_submission(
+        test=test,
+        preds=ensemble_test,
+        path=config.paths.ensemble_submission_path,
+    )
+    
 
 def train_best_and_submit(X, y, test, best_model_name,
                           best_model_cfg, config):

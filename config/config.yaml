@@ -1,17 +1,18 @@
 general:
   experiment_name: house_prices_final
   seed: 42
-  use_ensemble_for_submission: false
+  use_ensemble_for_submission: true
 
 target:
   column: SalePrice
   log_transform: true
 
 paths:
-  train_path: 'data/train.csv'
-  test_path: 'data/test.csv'
-  submission_path: 'submission.csv'
-  results_path: 'results.csv'
+  train_path: data/train.csv
+  test_path: data/test.csv
+  submission_path: submission.csv
+  results_path: results.csv
+  ensemble_submission_path: ensemble_submission.csv
   ensemble_results_path: ensemble_results.csv
 
 cv:
@@ -91,5 +92,3 @@ models:
       batch_size: 32
       lr: 0.00018
       weight_decay: 0.000946
-
-ensemble: {}
